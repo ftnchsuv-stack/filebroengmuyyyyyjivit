@@ -7,7 +7,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 # =================== CONFIG ===================
-TOKEN = "8532412255:AAErqUAlFsMansssdBxKo7jpiT42adw6J38"  # replace with your bot token
+TOKEN = "REPLACE_WITH_YOUR_TOKEN"
 # ==============================================
 
 csv_lock = Lock()
@@ -19,7 +19,7 @@ user_files = {}  # store random filenames for each user
 def get_user_csv(user_id: int) -> Path:
     """Get or create a random file for this user"""
     if user_id not in user_files:
-        rand_tag = secrets.token_hex(4)
+        rand_tag = secrets.token_hex(4)  # random 8-char tag
         user_files[user_id] = f"report_{user_id}_{rand_tag}.csv"
     return Path(user_files[user_id])
 
@@ -45,12 +45,14 @@ def clear_csv(user_id: int):
 def parse_message(text: str):
     """Parse message like /ID 136947097 ..."""
     lines = [l.strip() for l in text.strip().splitlines() if l.strip()]
-    lines = lines[:6]  # ✅ keep only first 6 lines
+
+    # ✅ Keep only first 6 lines
+    lines = lines[:6]
 
     parsed = {"id_number": "", "amount": "", "category": "", "username": ""}
 
     try:
-        if lines and lines[0].startswith("/ID"):
+        if len(lines) > 0 and lines[0].startswith("/ID"):
             parsed["id_number"] = lines[0].replace("/ID", "").strip()
         if len(lines) > 1:
             parsed["amount"] = lines[1]
@@ -71,19 +73,6 @@ def append_row(user_id: int, row: list):
         with csv_path.open("a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(row)
-
-
-# ------------------ Reaction Helper ------------------
-async def react_to_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, message_id: int, emoji: str = "👍"):
-    """Add emoji reaction using Telegram Bot API"""
-    try:
-        # This uses Telegram raw API endpoint
-        await context.bot._post(
-            endpoint="sendReaction",
-            data={"chat_id": chat_id, "message_id": message_id, "emoji": emoji},
-        )
-    except Exception:
-        pass  # silently ignore errors
 
 
 # ------------------ Commands ------------------
@@ -109,9 +98,9 @@ async def clear_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def file_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     csv_path = get_user_csv(user_id)
-    print("your code have been send file")
+
     if not csv_path.exists():
-        await update.message.reply_text("please /start sin jam bot jab pderm save")
+        await update.message.reply_text("⚠️ You don't have any saved records yet.")
         return
 
     with open(csv_path, "rb") as f:
@@ -121,17 +110,16 @@ async def file_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def id_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     if not machine_status.get(chat_id, False):
-        return  # ignore if machine is off
+        return  # Ignore silently if machine off
 
     user_id = update.effective_user.id
     text = update.message.text
     parsed = parse_message(text)
 
     if not parsed["id_number"]:
-        return
+        return  # invalid /ID, ignore silently
 
     date_str = datetime.now(timezone.utc).strftime("%m/%d/%Y")
-
     row = [
         date_str,
         parsed["id_number"],
@@ -141,8 +129,11 @@ async def id_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     append_row(user_id, row)
 
-    # ✅ React with ❤️ instead of replying
-    await react_to_message(context, chat_id, update.message.message_id, "👍")
+    # React with ✅ if supported, otherwise reply
+    try:
+        await update.message.react("❤️")
+    except Exception:
+        await update.message.reply_text("✅")
 
 
 # ------------------ Main ------------------
