@@ -7,7 +7,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 # =================== CONFIG ===================
-TOKEN = "REPLACE_WITH_YOUR_TOKEN"
+TOKEN = "8532412255:AAErqUAlFsMansssdBxKo7jpiT42adw6J38"
 # ==============================================
 
 csv_lock = Lock()
