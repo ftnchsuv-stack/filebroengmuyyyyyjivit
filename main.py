@@ -15,7 +15,37 @@ machine_status = {}
 user_files = {}  # store random filenames for each user
 
 
-# ------------------ File Helpers ------------------
+async def forwarded_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not machine_status.get(chat_id, False):
+        return  # ignore if machine off
+
+    user_id = update.effective_user.id
+    message = update.message
+
+    # Only process forwarded messages
+    if not message.forward_origin:
+        return
+
+    text = message.text or message.caption
+    if not text:
+        return  # skip non-text
+
+    parsed = parse_message(text)
+
+    # if user just forwarded text without /ID, store first 6 lines
+    lines = [l.strip() for l in text.strip().splitlines() if l.strip()]
+    lines = lines[:6]
+
+    date_str = datetime.now(timezone.utc).strftime("%m/%d/%Y")
+    row = [date_str] + lines + [""] * (5 - len(lines))  # ensure 5 columns
+    append_row(user_id, row)
+
+    # React with ❤️ (or silently ignore errors)
+    try:
+        await message.react("❤️")
+    except Exception:
+        pass
 def get_user_csv(user_id: int) -> Path:
     """Get or create a random file for this user"""
     if user_id not in user_files:
@@ -98,14 +128,14 @@ async def clear_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def file_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     csv_path = get_user_csv(user_id)
-
+    print("your bot have been send file ")
     if not csv_path.exists():
         await update.message.reply_text("⚠️ You don't have any saved records yet.")
         return
 
     with open(csv_path, "rb") as f:
         await update.message.reply_document(document=f, filename=csv_path.name)
-
+        
 
 async def id_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -129,11 +159,11 @@ async def id_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     append_row(user_id, row)
 
-    # React with ✅ if supported, otherwise reply
+    
     try:
         await update.message.react("❤️")
     except Exception:
-        await update.message.reply_text("✅")
+        await update.message.reply_text("save ✅")
 
 
 # ------------------ Main ------------------
