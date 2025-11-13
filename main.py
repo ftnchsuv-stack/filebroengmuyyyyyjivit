@@ -105,7 +105,7 @@ def append_row(user_id: int, row: list):
             writer.writerow(row)
 
 
-# ------------------ Commands ------------------
+       --
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     machine_status[chat_id] = True
@@ -124,6 +124,17 @@ async def clear_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     clear_csv(user_id)
     await update.message.reply_text("🧹 All saved data cleared. New file created.")
 
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message
+
+    if message.photo:
+        # Ignore photo (if you don’t want it)
+        print("Ignored photo message.")
+        return
+
+    if message.text:
+        text = message.text
+        print(f"Got text: {text}")
 
 async def file_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -174,7 +185,7 @@ def main():
     app.add_handler(CommandHandler("file", file_handler))
     app.add_handler(CommandHandler("clear", clear_handler))
     app.add_handler(CommandHandler("ID", id_handler))
-
+    app.add_handler(MessageHandler(filters.ALL, handle_message))
     print("Bot started ✅ Press Ctrl+C to stop.")
     app.run_polling()
 
